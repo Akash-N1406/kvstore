@@ -1,6 +1,6 @@
 #include "server/Server.hpp"
 #include "utils/Logger.hpp"
-#include "parser/Parser.hpp" // ← ADD
+#include "parser/Parser.hpp"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -100,44 +100,51 @@ void Server::handleClient(int clientFd)
 
         LOG_DEBUG("fd=" << clientFd << " recv: " << input);
 
-        // ── PARSE ─────────────────────────────────────────────────────────
         Command cmd = parse(input);
-
-        // ── EXECUTE (stub — real store wired in Step 4) ───────────────────
         std::string response;
 
         if (cmd.type == CommandType::UNKNOWN)
         {
-            // Parser already built the error message for us.
             response = cmd.errorMsg;
         }
         else if (cmd.type == CommandType::PING)
         {
             response = "+PONG\r\n";
         }
-        else if (cmd.type == CommandType::GET)
-        {
-            // Stub: store not connected yet.
-            response = "$-1\r\n"; // nil — key not found (Redis convention)
-        }
         else if (cmd.type == CommandType::SET)
         {
-            // Stub: pretend it worked.
+            m_store.set(cmd.args[0], cmd.args[1]);
             response = "+OK\r\n";
+        }
+        else if (cmd.type == CommandType::GET)
+        {
+            auto val = m_store.get(cmd.args[0]);
+            if (val.has_value())
+            {
+                // Bulk string response: $<length>\r\n<value>\r\n
+                // This is proper Redis protocol — redis-cli expects this format.
+                response = "$" + std::to_string(val->size()) + "\r\n";
+                response += *val + "\r\n";
+            }
+            else
+            {
+                response = "$-1\r\n"; // nil bulk string — key not found
+            }
         }
         else if (cmd.type == CommandType::DEL)
         {
-            // Stub: pretend 1 key was deleted.
-            response = ":1\r\n";
+            bool deleted = m_store.del(cmd.args[0]);
+            // :1 = deleted, :0 = key didn't exist
+            response = deleted ? ":1\r\n" : ":0\r\n";
         }
         else if (cmd.type == CommandType::EXPIRE)
         {
-            // Stub: pretend TTL was set.
-            response = ":1\r\n";
+            int secs = std::stoi(cmd.args[1]);
+            bool ok = m_store.expire(cmd.args[0], secs);
+            response = ok ? ":1\r\n" : ":0\r\n";
         }
 
         write(clientFd, response.c_str(), response.size());
-        // ──────────────────────────────────────────────────────────────────
     }
 
     if (bytesRead == 0)

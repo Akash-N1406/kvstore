@@ -2,14 +2,14 @@
 
 #include <atomic>
 #include <string>
-#include "threadpool/ThreadPool.hpp" // ← ADD THIS
+#include "threadpool/ThreadPool.hpp"
+#include "store/DataStore.hpp" // ← ADD
 
 class Server
 {
 public:
     Server(int port, int maxConn = 128);
     ~Server();
-
     void run();
     void stop();
 
@@ -19,7 +19,8 @@ private:
     int m_serverFd;
     std::atomic<bool> m_running;
 
-    ThreadPool m_pool; // ← ADD THIS
+    ThreadPool m_pool;
+    DataStore m_store; // ← ADD
 
     void setupSocket();
     void handleClient(int clientFd);
