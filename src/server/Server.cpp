@@ -12,7 +12,11 @@
 #include <cerrno>
 
 Server::Server(int port, int maxConn)
-    : m_port(port), m_maxConn(maxConn), m_serverFd(-1), m_running(false)
+    : m_port(port),
+      m_maxConn(maxConn),
+      m_serverFd(-1),
+      m_running(false),
+      m_pool(std::thread::hardware_concurrency()) // ← ADD THIS
 {}
 
 Server::~Server() {
@@ -64,9 +68,8 @@ void Server::run() {
         std::string clientIp = inet_ntoa(clientAddr.sin_addr);
         LOG_INFO("New connection from " << clientIp << " (fd=" << clientFd << ")");
 
-        std::thread([this, clientFd]() {
-            handleClient(clientFd);
-        }).detach();
+        m_pool.enqueue([this, clientFd]()
+                       { handleClient(clientFd); });
     }
 
     LOG_INFO("Accept loop exited.");
