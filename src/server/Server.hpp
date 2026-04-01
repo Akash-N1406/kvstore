@@ -20,7 +20,7 @@ private:
     std::atomic<bool> m_running;
 
     ThreadPool m_pool;
-    DataStore m_store; // ← ADD
+    DataStore m_store{10000}; // ← ADD
 
     void setupSocket();
     void handleClient(int clientFd);
