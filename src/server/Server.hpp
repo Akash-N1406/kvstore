@@ -3,7 +3,7 @@
 #include <atomic>
 #include <string>
 #include "threadpool/ThreadPool.hpp"
-#include "store/DataStore.hpp" // ← ADD
+#include "store/DataStore.hpp"
 
 class Server
 {
@@ -18,9 +18,8 @@ private:
     int m_maxConn;
     int m_serverFd;
     std::atomic<bool> m_running;
-
     ThreadPool m_pool;
-    DataStore m_store{10000}; // ← ADD
+    DataStore m_store;
 
     void setupSocket();
     void handleClient(int clientFd);

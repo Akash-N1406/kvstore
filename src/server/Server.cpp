@@ -16,9 +16,9 @@ Server::Server(int port, int maxConn)
       m_maxConn(maxConn),
       m_serverFd(-1),
       m_running(false),
-      m_pool(std::thread::hardware_concurrency())
-{
-}
+      m_pool(std::thread::hardware_concurrency()),
+      m_store(10000, "kvstore.snap", 300) // capacity, path, interval (seconds)
+{}
 
 Server::~Server() { stop(); }
 
@@ -49,6 +49,8 @@ void Server::setupSocket()
 void Server::run()
 {
     setupSocket();
+    // Restore persisted data before accepting any connections.
+    m_store.loadSnapshot();
     m_running = true;
     LOG_INFO("Server started. Waiting for connections...");
 
@@ -60,7 +62,6 @@ void Server::run()
         int clientFd = accept(m_serverFd,
                               reinterpret_cast<sockaddr *>(&clientAddr),
                               &clientLen);
-
         if (clientFd < 0)
         {
             if (!m_running)
